@@ -19,15 +19,33 @@ function App() {
     });
   }, []);
 
+  // const handleVote = (choice) => {
+  //   if (voted) return;
+  //   const newVotes = {
+  //     ...votes,
+  //     [choice]: votes[choice] + 1,
+  //   };
+  //   set(ref(database, "votes"), newVotes);
+  //   setVoted(true);
+  // };
+
   const handleVote = (choice) => {
-    if (voted) return;
-    const newVotes = {
-      ...votes,
-      [choice]: votes[choice] + 1,
-    };
-    set(ref(database, "votes"), newVotes);
-    setVoted(true);
+  if (voted || !userHash) return;
+
+  const newVotes = {
+    ...votes,
+    [choice]: votes[choice] + 1,
   };
+
+  // Simpan votes
+  set(ref(database, "votes"), newVotes);
+
+  // Tandai user ini udah vote
+  set(ref(database, "pemilih/" + userHash), true);
+
+  setVoted(true);
+};
+
 
   const totalVotes = votes.nasi + votes.sinyal;
   const nasiPercent = totalVotes ? (votes.nasi / totalVotes) * 100 : 0;
@@ -55,6 +73,8 @@ const handleKirimSaran = () => {
 
 //=================================
 const [daftarSaran, setDaftarSaran] = useState([]);
+const [userHash, setUserHash] = useState(null);
+
 
 useEffect(() => {
   const saranRef = ref(database, "saran");
@@ -67,6 +87,26 @@ useEffect(() => {
       setDaftarSaran(arr);
     }
   });
+
+    const fetchInfo = async () => {
+    const res = await fetch("https://api.ipify.org?format=json");
+    const data = await res.json();
+    const ip = data.ip;
+    const ua = navigator.userAgent;
+
+    const hash = btoa(ip + ua); // encode ke base64
+
+    const pemilihRef = ref(database, "pemilih/" + hash);
+    onValue(pemilihRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setVoted(true);
+      }
+    });
+
+    setUserHash(hash); // simpan untuk nanti saat submit
+  };
+
+  fetchInfo();
 }, []);
 
 
