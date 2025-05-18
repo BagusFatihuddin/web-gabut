@@ -261,22 +261,48 @@ function App() {
   // };
 
 
-  const handleVote = (choice) => {
-  if (voted || !userHash) return; // pastikan user belum vote & hash sudah siap
+//   const handleVote = (choice) => {
+//   if (voted || !userHash) return; // pastikan user belum vote & hash sudah siap
 
-  const newVotes = {
-    ...votes,
-    [choice]: votes[choice] + 1,
-  };
+//   const newVotes = {
+//     ...votes,
+//     [choice]: votes[choice] + 1,
+//   };
 
-  // Simpan hasil voting
-  set(ref(database, "votes"), newVotes);
+//   // Simpan hasil voting
+//   set(ref(database, "votes"), newVotes);
 
-  // Simpan bahwa user ini sudah voting berdasarkan hash unik
-  set(ref(database, "pemilih/" + userHash), true); // ✅ ini akan buat node "pemilih"
+//   // Simpan bahwa user ini sudah voting berdasarkan hash unik
+//   set(ref(database, "pemilih/" + userHash), true); // ✅ ini akan buat node "pemilih"
 
-  setVoted(true); // matikan tombol voting
+//   setVoted(true); // matikan tombol voting
+// };
+
+
+const handleVote = async (choice) => {
+  if (voted || !userHash) {
+    console.log("Sudah vote atau userHash belum siap");
+    return;
+  }
+
+  try {
+    // Update data votes
+    const newVotes = {
+      ...votes,
+      [choice]: votes[choice] + 1,
+    };
+    await set(ref(database, "votes"), newVotes);
+
+    // Simpan hash user ke pemilih
+    await set(ref(database, "pemilih/" + userHash), true);
+
+    console.log("Vote dan pemilih berhasil disimpan");
+    setVoted(true);
+  } catch (error) {
+    console.error("Gagal simpan vote atau pemilih:", error);
+  }
 };
+
 
 
   const totalVotes = votes.nasi + votes.sinyal;
@@ -334,6 +360,8 @@ function App() {
         setVoted(true); // ✅ kalau udah ada di database, berarti udah pernah vote
       }
     });
+
+  console.log("Hash user:", hash); // Pastikan ini tampil
   };
 
   fetchInfo();
