@@ -243,22 +243,41 @@ function App() {
   }, []);
 
   // Fungsi voting
+  // const handleVote = (choice) => {
+  //   if (voted || !userHash) return; // Jangan izinkan vote jika sudah vote atau hash belum siap
+
+  //   const newVotes = {
+  //     ...votes,
+  //     [choice]: votes[choice] + 1,
+  //   };
+
+  //   // Update jumlah vote ke Firebase
+  //   set(ref(database, "votes"), newVotes);
+
+  //   // Simpan bahwa user ini sudah vote berdasarkan hash-nya
+  //   set(ref(database, "pemilih/" + userHash), true);
+
+  //   setVoted(true); // Update status vote secara lokal
+  // };
+
+
   const handleVote = (choice) => {
-    if (voted || !userHash) return; // Jangan izinkan vote jika sudah vote atau hash belum siap
+  if (voted || !userHash) return; // pastikan user belum vote & hash sudah siap
 
-    const newVotes = {
-      ...votes,
-      [choice]: votes[choice] + 1,
-    };
-
-    // Update jumlah vote ke Firebase
-    set(ref(database, "votes"), newVotes);
-
-    // Simpan bahwa user ini sudah vote berdasarkan hash-nya
-    set(ref(database, "pemilih/" + userHash), true);
-
-    setVoted(true); // Update status vote secara lokal
+  const newVotes = {
+    ...votes,
+    [choice]: votes[choice] + 1,
   };
+
+  // Simpan hasil voting
+  set(ref(database, "votes"), newVotes);
+
+  // Simpan bahwa user ini sudah voting berdasarkan hash unik
+  set(ref(database, "pemilih/" + userHash), true); // ✅ ini akan buat node "pemilih"
+
+  setVoted(true); // matikan tombol voting
+};
+
 
   const totalVotes = votes.nasi + votes.sinyal;
   const nasiPercent = totalVotes ? (votes.nasi / totalVotes) * 100 : 0;
@@ -285,18 +304,52 @@ function App() {
   };
 
   // Ambil daftar saran
+  // useEffect(() => {
+  //   const saranRef = ref(database, "saran");
+  //   onValue(saranRef, (snapshot) => {
+  //     const data = snapshot.val();
+  //     if (data) {
+  //       const arr = Object.values(data);
+  //       // Urutkan berdasarkan waktu terbaru
+  //       arr.sort((a, b) => b.waktu - a.waktu);
+  //       setDaftarSaran(arr);
+  //     }
+  //   });
+  // }, []);
+
   useEffect(() => {
-    const saranRef = ref(database, "saran");
-    onValue(saranRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const arr = Object.values(data);
-        // Urutkan berdasarkan waktu terbaru
-        arr.sort((a, b) => b.waktu - a.waktu);
-        setDaftarSaran(arr);
+  const fetchInfo = async () => {
+    const res = await fetch("https://api.ipify.org?format=json");
+    const data = await res.json();
+    const ip = data.ip;
+    const ua = navigator.userAgent;
+
+    const hash = btoa(ip + ua); // encode ip + user agent ke base64 sebagai identitas unik
+    setUserHash(hash); // ✅ simpan dulu hash-nya agar siap dipakai handleVote
+
+    // Setelah dapat hash, cek di database apakah dia sudah pernah voting
+    const pemilihRef = ref(database, "pemilih/" + hash);
+    onValue(pemilihRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setVoted(true); // ✅ kalau udah ada di database, berarti udah pernah vote
       }
     });
-  }, []);
+  };
+
+  fetchInfo();
+
+  // Ambil daftar saran juga
+  const saranRef = ref(database, "saran");
+  onValue(saranRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const arr = Object.values(data);
+      arr.sort((a, b) => b.waktu - a.waktu);
+      setDaftarSaran(arr);
+    }
+  });
+}, []);
+
 
   // ======================= RENDER ===========================
   return (
